@@ -1,0 +1,62 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.wepindia.pos.fragments.FragmentPayPerUse">
+
+    <!-- TODO: Update blank fragment layout -->
+    <TextView
+        android:id="@+id/tv_heading"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textStyle="bold"
+        android:layout_marginTop="@dimen/_15dp_720dp_10dp_600dp"
+        android:layout_centerHorizontal="true"
+        android:textSize="@dimen/_20dp_720dp_15dp_600dp"
+        android:text=" Generated Invoice Count to be uploaded"/>
+
+    <LinearLayout
+        android:id="@+id/tr_head"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/tv_heading"
+        android:background="@color/colorPrimaryLight"
+        android:layout_marginStart="@dimen/_15dp_720dp_10dp_600dp"
+        android:layout_marginEnd="@dimen/_55dp_720dp_50dp_600dp"
+        android:layout_marginTop="@dimen/_15dp_720dp_10dp_600dp">
+        <TextView
+            android:id="@+id/tv_id"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"/>
+        <TextView
+            android:layout_width="150dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textStyle="bold"
+            android:paddingStart="@dimen/_5dp_720dp_4dp_600dp"
+            android:textColor="@color/white"
+            android:textSize="15dp"
+            android:text="Invoice Date"/>
+        <TextView
+            android:layout_width="150dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textStyle="bold"
+            android:textSize="15dp"
+            android:textColor="@color/white"
+            android:text="Invoice Count"/>
+    </LinearLayout>
+    <ListView
+        android:id="@+id/ll_meteringData"
+        android:layout_alignEnd="@+id/tr_head"
+        android:layout_alignStart="@+id/tr_head"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/tr_head"
+        android:layout_marginTop="@dimen/margin_1dp"
+        android:layout_marginBottom="@dimen/_30dp_720dp_25dp_600dp">
+
+    </ListView>
+
+</RelativeLayout>

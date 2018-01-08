@@ -2996,9 +2996,27 @@ public class BillingCounterSalesActivity extends WepPrinterBaseActivity implemen
         }
     }
 
+    void updateMeteringData()
+    {
+        Cursor cursor = db.getMeteringDataforDate(businessDate);
+        if(cursor!=null && cursor.moveToFirst())
+        {
+            int count = cursor.getInt(cursor.getColumnIndex("BillCount"));
+            db.updateMeteringDataforDate(businessDate,count+1);
+        }else
+        {
+            // first bill of the day
+            db.insertMeteringDataForDate(businessDate,1);
+        }
+    }
+
     private void l(int TenderType, boolean isPrintBill) { // TenderType:
         InsertBillItems();
-        InsertBillDetail(TenderType);
+        if(InsertBillDetail(TenderType) >0)
+        {
+            updateMeteringData();
+        }
+
     }
 
     /*************************************************************************************************************************************
@@ -3363,7 +3381,7 @@ public class BillingCounterSalesActivity extends WepPrinterBaseActivity implemen
      *
      * @param TenderType : Type of tender, 1 - Pay cash, 2 - Tender Screen payment
      *************************************************************************************************************************************/
-    private void InsertBillDetail(int TenderType) {
+    private long InsertBillDetail(int TenderType) {
 
         // Inserted Row Id in database table
         long lResult = 0;
@@ -3676,6 +3694,7 @@ public class BillingCounterSalesActivity extends WepPrinterBaseActivity implemen
 
         // Bill No Reset Configuration
         long Result2 = db.UpdateBillNoResetInvoiceNos(Integer.parseInt(tvBillNumber.getText().toString()));
+        return lResult;
     }
 
     void calculateDiscountAmount()

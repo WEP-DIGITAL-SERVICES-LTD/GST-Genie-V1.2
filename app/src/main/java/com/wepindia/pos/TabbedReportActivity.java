@@ -30,6 +30,7 @@ import android.widget.Toast;
 import com.wep.common.app.Database.DatabaseHandler;
 import com.wepindia.pos.GenericClasses.MessageDialog;
 import com.wepindia.pos.fragments.FragmentGSTLink;
+import com.wepindia.pos.fragments.FragmentPayPerUse;
 import com.wepindia.pos.fragments.FragmentUpgradeSoftware;
 import com.wepindia.pos.fragments.ReportFragment;
 import com.wepindia.pos.utils.ActionBarUtils;
@@ -229,6 +230,11 @@ public class TabbedReportActivity extends WepPrinterBaseActivity {
         Bundle bundle5=new Bundle();
         FragmentGSTLink reportFragment5 = new FragmentGSTLink();
         adapter.addFragment(reportFragment5, "GST Link");
+        viewPager.setAdapter(adapter);
+
+        Bundle bundle6=new Bundle();
+        FragmentPayPerUse reportFragment6 = new FragmentPayPerUse();
+        adapter.addFragment(reportFragment6, "Pay Per Use Data");
         viewPager.setAdapter(adapter);
 
         /*FragmentUpgradeSoftware reportFragment6 = new FragmentUpgradeSoftware();

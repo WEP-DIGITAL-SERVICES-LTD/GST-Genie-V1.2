@@ -108,7 +108,7 @@ public class GSTLinkActivity_Unused extends Activity implements HTTPAsyncTask.On
         try {
             dbGSTLink.CreateDatabase();
             dbGSTLink.OpenDatabase();
-            /*Cursor BusinessDate = dbGSTLink.getCurrentDate();
+            /*Cursor BusinessDate = dbpayPerUse.getCurrentDate();
             if (BusinessDate.moveToFirst()) {
                 objDate = new DateTime(BusinessDate.getString(0));
                 etReportDateStart.setText(BusinessDate.getString(0));
@@ -500,9 +500,9 @@ public class GSTLinkActivity_Unused extends Activity implements HTTPAsyncTask.On
             String str[] = startDate.split("-");
             ArrayList<GSTR2B2BAData> b2baList = null;//dataController.getGSTR2B2BDataList_registered();
             ArrayList<GSTR2_CDN_Data> gstr2cdnList = null;;//dataController.getGSTR2CDNSaveData();
-            GSTR2Data gstr1Data = new GSTR2Data(dbGSTLink.getGSTIN(),str[2]+str[0],123,234,gstr2B2BDatasList,b2baList,gstr2cdnList);
+            GSTR2Data gstr1Data = new GSTR2Data(dbpayPerUse.getGSTIN(),str[2]+str[0],123,234,gstr2B2BDatasList,b2baList,gstr2cdnList);
             progressDialog.show();
-            GSTRData gstrData = new GSTRData(userName,dbGSTLink.getGSTIN(),gstr1Data);
+            GSTRData gstrData = new GSTRData(userName,dbpayPerUse.getGSTIN(),gstr1Data);
             String strJson = GstJsonEncoder.getGSTRJsonEncode(gstrData);
             new HTTPAsyncTask(GSTLinkActivity_Unused.this, HTTPAsyncTask.HTTP_POST,strJson,REQUEST_SAVE_GSTR2, Config.GSTR2_URL).execute();
         */}

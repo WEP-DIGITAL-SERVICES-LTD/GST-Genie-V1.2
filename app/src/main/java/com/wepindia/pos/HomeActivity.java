@@ -4,14 +4,20 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
 import android.support.v7.widget.Toolbar;
+import android.telephony.TelephonyManager;
 import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -50,7 +56,7 @@ public class HomeActivity extends WepBaseActivity implements HTTPAsyncTask.OnHTT
     private static final String TAKEAWAY = "2";
     private static final String PICKUP = "3";
     private static final String DELIVERY = "4";
-    public static int Upload_Invoice_Count = 1010;
+    public static int Upload_Invoice_Count = 10101;
     String strUserId = "", strUserName = "";
     int strUserRole = 0;
     RelativeLayout rl_dinein, rl_CounterSales,rl_pickup,rl_delivery,rl_inward_invoice_entry,rl_amend,rl_cdn;
@@ -58,7 +64,7 @@ public class HomeActivity extends WepBaseActivity implements HTTPAsyncTask.OnHTT
     TextView tvDineInOption, tvCounterSalesOption, tvPickUpOption1, tvDeliveryOption;
     BillSetting objBillSettings;
     private Toolbar toolbar;
-	ArrayList<String> listAccesses ;
+    ArrayList<String> listAccesses ;
     Cursor settingcrsr;
     CharSequence s;
     DatabaseHandler dbHomeScreen;
@@ -82,7 +88,69 @@ public class HomeActivity extends WepBaseActivity implements HTTPAsyncTask.OnHTT
 
             InitializeViews();
             Display();
-            checkForAutoDayEnd(); // called after display because settingcrsr is being set in Display()
+
+            // check for metering data not uploaded more than 30 days
+            Cursor cursor = dbHomeScreen.getMeteringData();
+            String msg ="";
+            if(cursor.getCount() > 30 )
+            {
+                ConnectivityManager connManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+                NetworkInfo mWifi = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+                if (!mWifi.isConnected()) {
+                    // Do whatever
+                    msg = "Your application has been blocked as you have not uploaded the metering data. Kindly connect to wifi and log in again to continue.";
+                    AlertDialog.Builder dlgMessage = new AlertDialog.Builder(myContext);
+                    dlgMessage.setCancelable(false);
+                    dlgMessage
+                            .setIcon(R.drawable.ic_launcher)
+                            .setTitle("Pay Per Use")
+                            .setMessage(msg)
+                            .setNegativeButton("Ok", new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int which) {
+                                    Intent LoginIntent = new Intent(myContext,LoginActivity.class);
+                                    startActivity(LoginIntent);
+                                }
+                            })
+                            .show();
+
+
+                }else
+                {
+
+                    new AsyncTask<Void, Void, Void>() {
+                        ProgressDialog pd;
+                        long lRowId =0;
+                        @Override
+                        protected void onPreExecute() {
+                            super.onPreExecute();
+                            pd = new ProgressDialog(myContext);
+                            pd.setMessage("Uploading metring data, please wait..");
+                            pd.setIcon(R.drawable.ic_launcher);
+                            pd.setCancelable(false);
+                            pd.show();
+                        }
+
+                        @Override
+                        protected Void doInBackground(Void... params) {
+                            uploadMeteringData();
+                            return null;
+                        }
+
+
+                        @Override
+                        protected void onPostExecute(Void aVoid) {
+                            super.onPostExecute(aVoid);
+                            if (pd.isShowing()) {
+                                pd.dismiss();
+                            }
+                        }
+                    }.execute();
+
+
+                }
+            }
+
+            // called after display because settingcrsr is being set in Display()
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -90,6 +158,7 @@ public class HomeActivity extends WepBaseActivity implements HTTPAsyncTask.OnHTT
         Date d = new Date();
         s = DateFormat.format("dd-MM-yyyy", d.getTime());
         com.wep.common.app.ActionBarUtils.setupToolbarMenu(this,toolbar,getSupportActionBar(),"Home",strUserName," Date:"+s.toString());
+        checkForAutoDayEnd();
     }
 
     public DatabaseHandler getDb(){
@@ -148,39 +217,8 @@ public class HomeActivity extends WepBaseActivity implements HTTPAsyncTask.OnHTT
 
                     BillNoReset bs = new BillNoReset();
                     bs.setBillNo(dbHomeScreen);
+                    uploadMeteringData();
 
-                    try
-                    {
-                        Date dd = new SimpleDateFormat("dd-MM-yyyy").parse(businessdate);
-                        long milli = dd.getTime();
-                        Cursor cursor = dbHomeScreen.getInvoice_outward(Long.toString(milli));
-                        if(cursor!=null && cursor.moveToNext())
-                        {
-                            int billcount = cursor.getCount();
-                            Cursor cursor_owner = dbHomeScreen.getOwnerDetail();
-                            if(cursor_owner!= null && cursor_owner.moveToNext())
-                            {
-                                String deviceid = cursor_owner.getString(cursor_owner.getColumnIndex("DeviceId"));
-                                String deviceName = cursor_owner.getString(cursor_owner.getColumnIndex("DeviceName"));
-                                String Email = cursor_owner.getString(cursor_owner.getColumnIndex("Email"));
-                                String paramStr ="data="+deviceid+","+Email+","+businessdate+","+billcount+","+deviceName;
-                                new HTTPAsyncTask(HomeActivity.this,HTTPAsyncTask.HTTP_GET,"",Upload_Invoice_Count, Config.Upload_No_of_Invoices+paramStr).execute();
-                            }
-                            else
-                            {
-                                Log.d("TAG", "Cannot upload invoices count due to insufficient owners details");
-                            }
-
-                        }else
-                        {
-                            //Toast.makeText(myContext, "No Invoice count to send for businessDate :"+businessdate, Toast.LENGTH_SHORT).show();
-                            Log.d("TAG", "No Invoice count to send for businessDate :"+businessdate);
-                        }
-
-                    }catch (Exception e)
-                    {
-                        e.printStackTrace();
-                    }
 
                 }
 
@@ -191,14 +229,62 @@ public class HomeActivity extends WepBaseActivity implements HTTPAsyncTask.OnHTT
         }
     }
 
-@Override
+    private void uploadMeteringData()
+    {
+        try
+        {
+            Cursor cursor = dbHomeScreen.getMeteringData();
+            while (cursor!=null && cursor.moveToNext())
+            {
+                int billcount  = cursor.getInt(cursor.getColumnIndex("BillCount"));
+                String businessdate  = cursor.getString(cursor.getColumnIndex("InvoiceDate"));
+                Cursor cursor_owner = dbHomeScreen.getOwnerDetail();
+                if(cursor_owner!= null && cursor_owner.moveToNext())
+                {
+                    // String deviceid = cursor_owner.getString(cursor_owner.getColumnIndex("DeviceId"));
+                    TelephonyManager telephonyManager = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
+                    String deviceid = telephonyManager.getDeviceId();
+                    // String deviceName = cursor_owner.getString(cursor_owner.getColumnIndex("DeviceName"));
+                    String Email = cursor_owner.getString(cursor_owner.getColumnIndex("Email"));
+                    String paramStr ="data="+deviceid+","+Email+","+businessdate+","+billcount+",POS";
+                    ConnectivityManager connManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+                    NetworkInfo mWifi = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+                    if (mWifi.isConnected()) {
+                        // Do whatever
+                        Log.d("Home Screen","wifi connected");
+                        new HTTPAsyncTask(HomeActivity.this,HTTPAsyncTask.HTTP_GET,"",Upload_Invoice_Count, Config.Upload_No_of_Invoices+paramStr).execute();
+                    }else
+                    {
+                        Log.d("Home Screen","wifi not connected");
+                    }
+                    cursor_owner.close();
+                }
+                else
+                {
+                    Log.d("TAG", "Cannot upload invoices count due to insufficient owners details");
+                }
+
+            }
+            cursor.close();
+            /*else
+            {
+                //Toast.makeText(myContext, "No Invoice count to send for businessDate :"+businessdate, Toast.LENGTH_SHORT).show();
+                //Log.d("TAG", "No Invoice count to send for businessDate :"+businessdate);
+            }*/
+
+        }catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+    @Override
     protected void onResume() {
         super.onResume();
-    listAccesses = getDb().getPermissionsNamesForRole(getDb().getRoleName(strUserRole+""));
-    BillNoReset bs = new BillNoReset();
-    bs.setBillNo(dbHomeScreen);
-    Display();
-    checkForAutoDayEnd();
+        listAccesses = getDb().getPermissionsNamesForRole(getDb().getRoleName(strUserRole+""));
+        BillNoReset bs = new BillNoReset();
+        bs.setBillNo(dbHomeScreen);
+        Display();
+        checkForAutoDayEnd();
     }
 
     public boolean isAccessable(String type){
@@ -241,14 +327,7 @@ public class HomeActivity extends WepBaseActivity implements HTTPAsyncTask.OnHTT
 
 
 
-    @SuppressWarnings("deprecation")
-    private void DayEnd_new()
-    {
-        DialogFragment newFragment = new DatePickerFragment();
-        newFragment.show(getSupportFragmentManager(), "datePicker");
 
-
-    }
     public static class DatePickerFragment extends DialogFragment
             implements DatePickerDialog.OnDateSetListener {
 
@@ -362,46 +441,7 @@ public class HomeActivity extends WepBaseActivity implements HTTPAsyncTask.OnHTT
                             long Result = getDb().updateKOTNo(0);
                             Log.d("ManualDayEnd", "KOT No reset to 0 status :"+Result);
 
-                            try
-                            {   Cursor businessdate_cursor = getDb().getCurrentDate();
-                                if(businessdate_cursor != null && businessdate_cursor.moveToNext())
-                                {
-                                    String businessdate =  businessdate_cursor.getString(businessdate_cursor.getColumnIndex("BusinessDate"));
-                                    Date dd = new SimpleDateFormat("dd-MM-yyyy").parse(businessdate);
-                                    long milli = dd.getTime();
-                                    Cursor cursor = getDb().getInvoice_outward(Long.toString(milli));
-                                    if(cursor!=null && cursor.moveToNext())
-                                    {
-                                        int billcount = cursor.getCount();
-                                        Cursor cursor_owner = getDb().getOwnerDetail();
-                                        if(cursor_owner!= null && cursor_owner.moveToNext())
-                                        {
-                                            String deviceid = cursor_owner.getString(cursor_owner.getColumnIndex("DeviceId"));
-                                            String deviceName = cursor_owner.getString(cursor_owner.getColumnIndex("DeviceName"));
-                                            String Email = cursor_owner.getString(cursor_owner.getColumnIndex("Email"));
-                                            //Date newDate = new Date(milli);
-                                            //String dd1 = new SimpleDateFormat("yyyy-MM-dd").format(newDate);
-                                            String paramStr ="data="+deviceid+","+Email+","+businessdate+","+billcount+","+deviceName;
-                                            //String paramStr ="data="+deviceid+","+Email+","+dd1+","+billcount+","+deviceName;
-                                            new HTTPAsyncTask(HomeActivity.this,HTTPAsyncTask.HTTP_GET,"",Upload_Invoice_Count, Config.Upload_No_of_Invoices+paramStr).execute();
-                                        }
-                                        else
-                                        {
-                                            Log.d("TAG", "Cannot upload invoices count due to insufficient owners details");
-                                        }
-
-                                    }else
-                                    {
-                                        Toast.makeText(myContext, "No Invoice count to send for businessDate :"+businessdate, Toast.LENGTH_SHORT).show();
-                                        Log.d("TAG", "No Invoice count to send for businessDate :"+businessdate);
-                                    }
-                                }
-
-
-                            }catch (Exception e)
-                            {
-                                e.printStackTrace();
-                            }
+                            uploadMeteringData();
 
                             //UpdateStock();
                             long iResult = getDb().updateBusinessDate(String.valueOf(strNextDate));
@@ -582,7 +622,31 @@ public class HomeActivity extends WepBaseActivity implements HTTPAsyncTask.OnHTT
                 {
                     if(data.contains("\"success\":true,\"message\":\"Data Updated Successfully\""))
                     {
-                        //Toast.makeText(myContext, "No of invoices uploaded sucessfully.", Toast.LENGTH_SHORT).show();
+                        String [] recvdData = data.split(":");
+                        try {
+                            String datenCount = recvdData[3];
+                            String[] dataa = datenCount.split(",");
+                            String[] date = dataa[0].split("\"");
+                            String[] cc = dataa[1].split("\"");
+                            int count = Integer.parseInt(cc[0]);
+                            //Toast.makeText(myContext, "No of invoices uploaded sucessfully.", Toast.LENGTH_SHORT).show();
+                            DatabaseHandler db = new DatabaseHandler(this);
+                            Cursor cursor = db.getMeteringDataforDate(date[1]);
+                            if(cursor!=null && cursor.moveToFirst())
+                            {
+                                int actualCount = cursor.getInt(cursor.getColumnIndex("BillCount"));
+                                if(actualCount == count)
+                                    dbHomeScreen.deleteMeteringData(date[1]);
+                                else if(actualCount > count)
+                                {
+                                    db.updateMeteringDataforDate(date[1],actualCount-count);
+                                }
+                            }
+
+                        }catch (Exception e)
+                        {
+                            e.printStackTrace();
+                        }
                     }
                     else if (data.contains("\"success\":false,\"message\":\"Check Parameters\""))
                     {
@@ -591,12 +655,12 @@ public class HomeActivity extends WepBaseActivity implements HTTPAsyncTask.OnHTT
                     }
                 }
             } catch (Exception e) {
-               // Toast.makeText(this, "Error due to " + e, Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Error due to " + e, Toast.LENGTH_SHORT).show();
                 e.printStackTrace();
             }
 
         } else {
-           // Toast.makeText(this, "Sending error", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Sending error", Toast.LENGTH_SHORT).show();
         }
 
     }

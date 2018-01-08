@@ -5678,7 +5678,7 @@ private void LoadModifyKOTItems_old(Cursor crsrBillItems) {
      *
      * @param TenderType : Type of tender, 1 - Pay cash, 2 - Tender Screen payment
      *************************************************************************************************************************************/
-    private void InsertBillDetail(int TenderType) {
+    private long InsertBillDetail(int TenderType) {
 
         // Inserted Row Id in database table
         long lResult = 0;
@@ -5972,6 +5972,7 @@ private void LoadModifyKOTItems_old(Cursor crsrBillItems) {
         long Result2 = db.UpdateBillNoResetInvoiceNos(Integer.parseInt(tvBillNumber.getText().toString()));
 //        System.out.println(Result2);
 //        Log.d("Richa :- ", String.valueOf(dbBillScreen.getNewBillNumber()));
+        return lResult;
     }
 
     void calculateDiscountAmount()
@@ -6253,6 +6254,20 @@ private void LoadModifyKOTItems_old(Cursor crsrBillItems) {
      * @param TenderType  : Type of tender, 1 - Pay cash, 2 - Tender Screen payment
      * @param isPrintBill : True if bill needs to be printed else False
      *************************************************************************************************************************************/
+    void updateMeteringData()
+    {
+        String businessDate = tvDate.getText().toString();
+        Cursor cursor = db.getMeteringDataforDate(businessDate);
+        if(cursor!=null && cursor.moveToFirst())
+        {
+            int count = cursor.getInt(cursor.getColumnIndex("BillCount"));
+            db.updateMeteringDataforDate(businessDate,count+1);
+        }else
+        {
+            // first bill of the day
+            db.insertMeteringDataForDate(businessDate,1);
+        }
+    }
     private void l(int TenderType, boolean isPrintBill) { // TenderType:
         // 1=PayCash
         // 2=Tender
@@ -6265,7 +6280,10 @@ private void LoadModifyKOTItems_old(Cursor crsrBillItems) {
         InsertBillItems();
 
         // Insert bill details to database
-        InsertBillDetail(TenderType);
+        if(InsertBillDetail(TenderType) >0)
+        {
+            updateMeteringData();
+        }
 
         /*if (isPrintBill) {
             // Print bill

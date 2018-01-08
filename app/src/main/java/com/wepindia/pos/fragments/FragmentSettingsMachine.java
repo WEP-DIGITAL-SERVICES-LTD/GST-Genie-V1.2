@@ -22,11 +22,15 @@ import android.widget.Toast;
 
 import com.wep.common.app.Database.DatabaseHandler;
 import com.wepindia.pos.GenericClasses.MessageDialog;
+import com.wepindia.pos.LoginActivity;
 import com.wepindia.pos.OwnerDetailsActivity;
 import com.wepindia.pos.R;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class FragmentSettingsMachine extends Fragment {
 
@@ -250,17 +254,33 @@ public class FragmentSettingsMachine extends Fragment {
                             if (str.equalsIgnoreCase(roleName)) {
                                 Log.d("RestoreDefault()", "Factory Resetted");
                                 //dbBackup.FactoryReset();
+                                Map <String,Integer> meteringList = new HashMap<String, Integer>();
+                                Cursor meteringCursor = dbBackup.getMeteringData();
+                                while(meteringCursor!=null && meteringCursor.moveToNext())
+                                {
+                                    String invoiceDate = meteringCursor.getString(meteringCursor.getColumnIndex("InvoiceDate"));
+                                    int billCount = meteringCursor.getInt(meteringCursor.getColumnIndex("BillCount"));
+                                    meteringList.put(invoiceDate,billCount);
+                                }
                                 String DB_PATH = Environment.getExternalStorageDirectory().getPath() + "/WeP_FnB/";
-                                myContext.deleteDatabase(DB_PATH + "WeP_FnB_Database.db");
-                                //Toast.makeText(myContext, "Factory Reset Successfully", Toast.LENGTH_LONG).show();
+                                boolean status = myContext.deleteDatabase(DB_PATH + "WeP_FnB_Database.db");
+                                dbBackup.CloseDatabase();
+                                DatabaseHandler db = new DatabaseHandler(myContext);
+                                for(Map.Entry<String, Integer> meteringData : meteringList.entrySet())
+                                {
+                                    String invoiceDate = meteringData.getKey();
+                                    int billCount = meteringData.getValue();
+                                    db.insertMeteringDataForDate(invoiceDate,billCount);
+                                }
+                                db.CloseDatabase();
                                 MsgBox.setIcon(R.drawable.ic_launcher)
-                                .setTitle("Note")
-                                .setMessage("Factory Reset Successfully")
+                                        .setCancelable(false)
+                                        .setTitle("Note")
+                                        .setMessage("Factory Reset Successfully")
                                         .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
                                             @Override
                                             public void onClick(DialogInterface dialog, int which) {
-                                                dbBackup.CloseDatabase();
-                                                Intent  intent = new Intent(myContext, OwnerDetailsActivity.class);
+                                                Intent  intent = new Intent(myContext, LoginActivity.class);
                                                 startActivity(intent);
                                             }
                                         })

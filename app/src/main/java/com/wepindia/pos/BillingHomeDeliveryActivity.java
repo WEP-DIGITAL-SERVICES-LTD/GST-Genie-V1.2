@@ -4804,7 +4804,7 @@ public class BillingHomeDeliveryActivity extends WepPrinterBaseActivity implemen
      *
      * @param TenderType : Type of tender, 1 - Pay cash, 2 - Tender Screen payment
      *************************************************************************************************************************************/
-    private void InsertBillDetail(int TenderType) {
+    private long InsertBillDetail(int TenderType) {
 
         // Inserted Row Id in database table
         long lResult = 0;
@@ -5127,6 +5127,7 @@ public class BillingHomeDeliveryActivity extends WepPrinterBaseActivity implemen
 
         // Bill No Reset Configuration
         long Result2 = db.UpdateBillNoResetInvoiceNos(Integer.parseInt(tvBillNumber.getText().toString()));
+        return  lResult;
     }
 
     /*************************************************************************************************************************************
@@ -5135,22 +5136,28 @@ public class BillingHomeDeliveryActivity extends WepPrinterBaseActivity implemen
      * @param TenderType  : Type of tender, 1 - Pay cash, 2 - Tender Screen payment
      * @param isPrintBill : True if bill needs to be printed else False
      *************************************************************************************************************************************/
-    private void l(int TenderType, boolean isPrintBill) { // TenderType:
-        // 1=PayCash
-        // 2=Tender
-
-        // Insert all bill items to database
-        InsertBillItems();
-
-        // Insert bill details to database
-        InsertBillDetail(TenderType);
-
-        /*if (isPrintBill) {
-            // Print bill
-            PrintBill();
-        }*/
+    void updateMeteringData()
+    {
+        Cursor cursor = db.getMeteringDataforDate(businessDate);
+        if(cursor!=null && cursor.moveToFirst())
+        {
+            int count = cursor.getInt(cursor.getColumnIndex("BillCount"));
+            db.updateMeteringDataforDate(businessDate,count+1);
+        }else
+        {
+            // first bill of the day
+            db.insertMeteringDataForDate(businessDate,1);
+        }
     }
 
+    private void l(int TenderType, boolean isPrintBill) { // TenderType:
+        InsertBillItems();
+        if(InsertBillDetail(TenderType) >0)
+        {
+            updateMeteringData();
+        }
+
+    }
     /*************************************************************************************************************************************
      * Updates complimentary bill details in database
      *

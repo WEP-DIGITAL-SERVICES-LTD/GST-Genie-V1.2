@@ -101,6 +101,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
     private static final String TBL_TABLEBOOKING = "TableBooking";
     private static final String TBL_MAILSETTING = "MailConfiguration";
     private static final String TBL_REPORTSMASTER = "ReportsMaster";
+    private static final String TBL_METERINGDATA = "MeteringData";
     private static final String TBL_PURCHASEORDER = "PurchaseOrder";
     private static final String TBL_GOODSINWARD = "GoodsInward";
     private static final String TBL_INGREDIENTS = "Ingredients";
@@ -612,6 +613,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
     public static final String KEY_CustStateCode = "CustStateCode";
     public static final String KEY_UID = "UID";
     public static final String KEY_InvoiceDate = "InvoiceDate";
+    public static final String KEY_BillCount = "BillCount";
     public static final String KEY_Value = "Value";
     public static final String KEY_HSNCode = "HSNCode";
     public static final String KEY_SUPPLIERNAME = "SupplierName";
@@ -1243,6 +1245,12 @@ public class DatabaseHandler extends SQLiteOpenHelper {
             KEY_ReportsName + " TEXT, " + KEY_ReportsType + " INTEGER, " + KEY_Status + " INTEGER )";
 
 
+    String QUERY_CREATE_TABLE_METERINGDATA = "CREATE TABLE " + TBL_METERINGDATA + " ( " +
+            "_id" +"  INTEGER PRIMARY KEY, " +
+            KEY_InvoiceDate + " TEXT ," +
+            KEY_BillCount + " INTEGER )";
+
+
     // SQLite Database and Context
     private SQLiteDatabase dbFNB;
     Context myContext;
@@ -1288,6 +1296,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
             db.execSQL(QUERY_CREATE_TABLE_KITCHEN);
             db.execSQL(QUERY_CREATE_TABLE_MAILCONFIGURATION);
             db.execSQL(QUERY_CREATE_TABLE_REPORTSMASTER);
+            db.execSQL(QUERY_CREATE_TABLE_METERINGDATA);
             db.execSQL(QUERY_CREATE_TABLE_CUSTOMER);
             db.execSQL(QUERY_CREATE_TABLE_USERS);
             db.execSQL(QUERY_CREATE_TABLE_ROLE_ACCESS);
@@ -9613,4 +9622,65 @@ public Cursor getGSTR1B2CL_invoices_ammend(String InvoiceNo, String InvoiceDate,
 
     }
 
+
+    public Cursor getMeteringData()
+    {
+        String query = "Select * from "+TBL_METERINGDATA +" ORDER BY "+KEY_InvoiceDate +" ASC";
+        Cursor cursor = dbFNB.rawQuery(query, null);
+        return cursor;
+    }
+    public Cursor getMeteringDataforDate(String InvoiceDate)
+    {
+        SQLiteDatabase db = getWritableDatabase();
+        String query = "Select * from "+TBL_METERINGDATA+" WHERE "+KEY_InvoiceDate+" LIKE '"+InvoiceDate+"'";
+        Cursor cursor = db.rawQuery(query, null);
+        return cursor;
+    }
+
+    public int updateMeteringDataforDate(String InvoiceDate ,int billcount)
+    {
+        SQLiteDatabase db = getWritableDatabase();
+        int result=  -1;
+        try {
+            cvDbValues = new ContentValues();
+            cvDbValues.put(KEY_BillCount,billcount);
+            result = db.update(TBL_METERINGDATA, cvDbValues, KEY_InvoiceDate+" LIKE '" + InvoiceDate+"'", null);
+        } catch (Exception e) {
+            e.printStackTrace();
+            result = 0;
+        }
+        finally {
+            return result;
+        }
+    }
+    public long insertMeteringDataForDate(String InvoiceDate, int billcount)
+    {
+        SQLiteDatabase db = getWritableDatabase();
+        long result=  -1;
+        try {
+            cvDbValues = new ContentValues();
+            cvDbValues.put(KEY_BillCount,billcount);
+            cvDbValues.put(KEY_InvoiceDate,InvoiceDate);
+            result = db.insert(TBL_METERINGDATA, null, cvDbValues);
+        } catch (Exception e) {
+            e.printStackTrace();
+            result = 0;
+        }
+        finally {
+            return result;
+        }
+    }
+    public long deleteMeteringData(String date)
+    {
+        long result=  -1;
+        try {
+            result = dbFNB.delete(TBL_METERINGDATA, KEY_InvoiceDate+" LIKE '"+date+"'", null);
+        } catch (Exception e) {
+            e.printStackTrace();
+            result = 0;
+        }
+        finally {
+            return result;
+        }
+    }
 }
